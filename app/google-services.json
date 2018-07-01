@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "1086644982696",
+    "firebase_url": "https://coffeestand-7f747.firebaseio.com",
+    "project_id": "coffeestand-7f747",
+    "storage_bucket": "coffeestand-7f747.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1086644982696:android:34755f8afa0a59a6",
+        "android_client_info": {
+          "package_name": "com.example.tylercichonski.coffeestand"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1086644982696-0lsd66pnof6tu2gnfvpjn9dmop2hosik.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.tylercichonski.coffeestand",
+            "certificate_hash": "bddfcbc2c4bb9d28e47f05d9580fbf1b52354e68"
+          }
+        },
+        {
+          "client_id": "1086644982696-0jegibkl0mst1gjnkf2slajk66t1jd00.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUG66gBlcGUYB-bxK5X14tjzM6OKTWh8Y"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1086644982696-0jegibkl0mst1gjnkf2slajk66t1jd00.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
