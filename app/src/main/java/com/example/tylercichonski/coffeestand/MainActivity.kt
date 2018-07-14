@@ -1,27 +1,44 @@
 package com.example.tylercichonski.coffeestand
 
+import android.app.Activity
 import android.app.ProgressDialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import android.content.Intent
 import android.os.AsyncTask
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.annotation.IdRes
+import android.support.v7.app.AlertDialog
+import android.text.Html
 import android.util.Log
 import android.view.View
-import com.google.android.gms.common.server.converter.StringToIntConverter
+import android.widget.Button
+import android.widget.TextView
+import android.widget.Toast
+import com.example.tylercichonski.coffeestand.R.id.*
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.squareup.sdk.pos.ChargeRequest
+import com.squareup.sdk.pos.CurrencyCode
+import com.squareup.sdk.pos.PosClient
+import com.squareup.sdk.pos.PosSdk
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.BufferedReader
-import java.io.IOException
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.channels.Channel
+import kotlinx.coroutines.experimental.channels.actor
+import java.io.*
 import java.util.*
 
+
 class MainActivity : AppCompatActivity() {
-    //bluetooth data
+    private val APPLICATION_ID = "sq0idp-AWZpT2Eg011bOSisdxzKeA"
+    private val CHARGE_REQUEST_CODE = 1
     companion object {
         var m_myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
         var m_bluetoothSocket: BluetoothSocket? = null
@@ -29,9 +46,8 @@ class MainActivity : AppCompatActivity() {
         lateinit var m_bluetoothAdapter: BluetoothAdapter
         var m_isConnected: Boolean = false
         lateinit var m_address: String
+        var valveController: Boolean = false
     }
-
-
 
     lateinit var db: DocumentReference
     //constants for Firestore Document Data Fields
@@ -43,9 +59,15 @@ class MainActivity : AppCompatActivity() {
     var amountInKeg: Any? = 0
     lateinit var location: String
     lateinit var macAddress: String
-    var amountdispensed: Int = 0
     //Hashmap used to upload back to Firestore
     val items = HashMap<String,Any>()
+    lateinit var context: Context
+    var transaction = Transaction("","","Started")
+    private var posClient: PosClient? = null
+    private val TAG = MainActivity::class.java!!.getSimpleName()
+
+
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,23 +81,120 @@ class MainActivity : AppCompatActivity() {
             macAddress= documentSnapshot.get(MAC_ADDRESS) as String
             m_address = macAddress
             ConnectToDevice(this).execute()
+        })
+       // Thread.sleep(1000)
+        //var posClient: PosClient = PosSdk.createClient(this, APPLICATION_ID)
+        posClient = PosSdk.createClient(this, APPLICATION_ID)
 
-            control_led_on.setOnClickListener { sendCommand("3") }
-            control_led_off.setOnClickListener { sendCommand("4") }
-            //control_led_disconnect.setOnClickListener { disconnect() }
+        setup(amountDispensedTextView,costTextView,startCoffeeButton)
+        unpaidTextView.visibility = View.INVISIBLE
+        payForCoffeeButton.visibility = View.INVISIBLE
+        //stopValveButton()
 
+        payForCoffeeButton.setOnClickListener ({ sendCommand("4")
+
+
+             payForCoffeeButton.visibility= View.INVISIBLE
+            stopValveButton()
 
 
 
         })
+        //control_led_disconnect.setOnClickListener { ConnectToDevice(this).execute() }
 
     }
 
+    fun View.onClick(action: suspend (View) -> Unit) {
+        // launch one actor
+        val eventActor = actor<View>(UI, capacity = Channel.CONFLATED) {
+            for (event in channel) action(event)
+        }
+        // install a listener to activate this actor
+        setOnClickListener {
+            eventActor.offer(it)
+        }
+    }
+
+
+    fun setup(hello: TextView,cost:TextView, button: Button){
+        var coffee = "none"
+        var storedCoffee = "0"
+        var costPerOunce : Double= 0.25
+        var job: Job = launch(UI) {
+            delay(2000)
+            while (true) {
+               // if (m_isConnected == true){
+
+                var coffee = "${coffeeMeter()}"
+                delay(100)
+                var coffee2 = "${coffeeMeter()}"
+                if (coffee2 > coffee) {
+                    amountDispensedTextView.text = coffee2
+                    var costDouble = coffee2.toDouble() * costPerOunce
+                    costTextView.text = costDouble.toString()
+                    transaction.coffeeDispensed = coffee2
+                    transaction.cost = costDouble.toString()
+                    if (transaction.status == "Started") {
+                        if (transaction.coffeeDispensed > "0") {
+                            transaction.status = "Coffee Poured"
+                            payForCoffeeButton.visibility = View.VISIBLE
+                        }
+                    }
+
+                }
+
+            //}
+            }
+        }
+
+
+        button.onClick {
+            var command = sendCommand("3")
+            coffee = "${coffeeMeter()}"
+            startCoffeeButton.visibility = View.INVISIBLE
+
+
+        }
+
+        //placeholder
+    }
+
+     fun stopValveButton() {
+
+        var coffeeDispensed = transaction.coffeeDispensed
+        var coffeeCost = transaction.cost.toDouble()*100
+        var coffeeCostInt = coffeeCost.toInt()
+        var request: ChargeRequest = ChargeRequest.Builder(coffeeCostInt,CurrencyCode.USD).build()
+        try{
+            val intent: Intent = posClient?.createChargeIntent(request)!!
+            startActivityForResult(intent,CHARGE_REQUEST_CODE)
+
+        }catch (e: IOException) {
+            }
+
+
+
+    }
+
+    suspend fun coffeeMeter() : String= withContext(CommonPool) {
+        var buf = ByteArray(1024)
+        Log.d("coffee dispensed:", "coffee Dispensed")
+        try {
+            var coffeeScanner: Scanner = Scanner(m_bluetoothSocket!!.inputStream).useDelimiter("&")
+            Log.d("after delay:", "coffee Dispensed")
+            Log.d("after scanner next", "coffee Dispensed")
+
+            "${coffeeScanner.next()}"
+        } catch (e: IOException) {
+            "exepection"
+        }
+    }
 
 
 
     //onclickhandler for btton. This will be replaced by the data output by the arduino
     fun amountDispensedButtonClicked(view: View){
+
         var amountDispensed = editAmountDispensed.text.toString()
         var dblAmountDispensed = amountDispensed.toDouble()
         var stringAmountInKeg = amountInKeg.toString()
@@ -86,6 +205,7 @@ class MainActivity : AppCompatActivity() {
         items.put(LOCATION, location)
         items.put(MAC_ADDRESS, macAddress)
         db.set(items)
+
 
     }
     private fun sendCommand(input: String) {
@@ -111,10 +231,10 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
+
     private class ConnectToDevice(c: Context) : AsyncTask<Void, Void, String>() {
         private var connectSuccess: Boolean = true
         private val context: Context
-
         init {
             this.context = c
         }
@@ -122,6 +242,7 @@ class MainActivity : AppCompatActivity() {
         override fun onPreExecute() {
             super.onPreExecute()
             m_progress = ProgressDialog.show(context, "Connecting...", "please wait")
+
         }
 
         override fun doInBackground(vararg p0: Void?): String? {
@@ -132,6 +253,8 @@ class MainActivity : AppCompatActivity() {
                     m_bluetoothSocket = device.createInsecureRfcommSocketToServiceRecord(m_myUUID)
                     BluetoothAdapter.getDefaultAdapter().cancelDiscovery()
                     m_bluetoothSocket!!.connect()
+
+
                 }
             } catch (e: IOException) {
                 connectSuccess = false
@@ -141,15 +264,86 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onPostExecute(result: String?) {
-            super.onPostExecute(result)
-            if (!connectSuccess) {
-                Log.i("data", "couldn't connect")
-            } else {
-                m_isConnected = true
-            }
-            m_progress.dismiss()
+          super.onPostExecute(result)
+          if (!connectSuccess) {
+              Log.i("data", "couldn't connect")
+           } else {
+               m_isConnected = true
+           }
+           m_progress.dismiss()
         }
     }
+
+    private fun <T : View> findView(@IdRes id: Int): T {
+
+        return findViewById<View>(id) as T
+    }
+
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == CHARGE_REQUEST_CODE) {
+            if (data == null) {
+                // This can happen if Square Point of Sale was uninstalled or crashed while we're waiting for a
+                // result.
+                Toast.makeText(this,"No Result from Square Point of Sale",Toast.LENGTH_SHORT).show()
+                return
+            }
+            if (resultCode == Activity.RESULT_OK) {
+                val success = posClient?.parseChargeSuccess(data)!!
+                onTransactionSuccess(success)
+            } else {
+                val error = posClient?.parseChargeError(data)!!
+                onTransactionError(error)
+            }
+        } else {
+            super.onActivityResult(requestCode, resultCode, data)
+        }
+    }
+
+    private fun onTransactionSuccess(successResult: ChargeRequest.Success) {
+        transaction.status = "Paid"
+        val message = Html.fromHtml("<b><font color='#00aa00'>Success</font></b><br><br>"
+                + "<b>Client RealTransaction Id</b><br>"
+                + successResult.clientTransactionId
+                + "<br><br><b>Server RealTransaction Id</b><br>"
+                + successResult.serverTransactionId
+                + "<br><br><b>Request Metadata</b><br>"
+                + successResult.requestMetadata)
+        showResult(message)
+        Log.d(TAG, message.toString())
+    }
+
+    private fun onTransactionError(errorResult: ChargeRequest.Error) {
+        startCoffeeButton.visibility = View.INVISIBLE
+        payForCoffeeButton.visibility = View.VISIBLE
+        transaction.status = "Unpaid"
+        unpaidTextView.visibility = View.VISIBLE
+
+//        val message = Html.fromHtml("<b><font color='#aa0000'>Error</font></b><br><br>"
+//                + "<b>Error Key</b><br>"
+//                + errorResult.code
+//                + "<br><br><b>Error Description</b><br>"
+//                + errorResult.debugDescription
+//                + "<br><br><b>Request Metadata</b><br>"
+//                + errorResult.requestMetadata)
+//        showResult(message)
+        Log.d(TAG, message.toString())
+    }
+
+    private fun isBlank(s: String?): Boolean {
+        return s == null || s.trim { it <= ' ' }.isEmpty()
+    }
+
+
+
+    private fun showResult(message: CharSequence) {
+        AlertDialog.Builder(this).setTitle("Coffee")
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+    }
+
+
 }
 
 

@@ -29,24 +29,59 @@
         app:layout_constraintTop_toBottomOf="@+id/editAmountDispensed" />
 
     <Button
-        android:id="@+id/control_led_on"
+        android:id="@+id/startCoffeeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
+        android:elevation="24dp"
+        android:onClick="onButtonClicked"
         android:text="On"
         app:layout_constraintStart_toStartOf="@+id/amountDispensedButton"
         app:layout_constraintTop_toBottomOf="@+id/amountDispensedButton" />
 
     <Button
-        android:id="@+id/control_led_off"
+        android:id="@+id/payForCoffeeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:text="Off"
-        app:layout_constraintStart_toStartOf="@+id/control_led_on"
-        app:layout_constraintTop_toBottomOf="@+id/control_led_on" />
+        app:layout_constraintStart_toStartOf="@+id/startCoffeeButton"
+        app:layout_constraintTop_toBottomOf="@+id/startCoffeeButton" />
+
+    <TextView
+        android:id="@+id/amountDispensedTextView"
+        android:layout_width="0dp"
+        android:layout_height="100dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginStart="8dp"
+        android:text="TextView"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/costTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="8dp"
+        android:text="TextView"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/amountDispensedTextView" />
+
+    <TextView
+        android:id="@+id/unpaidTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:text="Please Complete Transaction"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/startCoffeeButton"
+        tools:layout_editor_absoluteY="126dp" />
 
 
 </android.support.constraint.ConstraintLayout>
