@@ -20,6 +20,10 @@ import android.widget.TextView
 import android.widget.Toast
 import com.example.tylercichonski.coffeestand.R.id.*
 import com.google.android.gms.tasks.OnSuccessListener
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -37,6 +41,9 @@ import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
+    // Firebase instance variables
+  // Firebase instance variables
+
     private val APPLICATION_ID = "sq0idp-AWZpT2Eg011bOSisdxzKeA"
     private val CHARGE_REQUEST_CODE = 1
     companion object {
@@ -50,6 +57,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     lateinit var db: DocumentReference
+    lateinit var fs: DocumentReference
+    lateinit var locations: CollectionReference
     //constants for Firestore Document Data Fields
     val AMOUNT_IN_KEG ="amountInKeg"
     val AMOUNT_DISPENSED = "amount dispensed"
@@ -57,15 +66,17 @@ class MainActivity : AppCompatActivity() {
     val LOCATION = "location"
     //variables to hold Firestore Data Fields
     var amountInKeg: Any? = 0
-    lateinit var location: String
     lateinit var macAddress: String
     //Hashmap used to upload back to Firestore
     val items = HashMap<String,Any>()
+    val transactionItems = HashMap<String,Any>()
     lateinit var context: Context
-    var transaction = Transaction("","","Started")
+    var transaction = Transaction("","","","","", Timestamp.now())
     private var posClient: PosClient? = null
     private val TAG = MainActivity::class.java!!.getSimpleName()
-
+    var location = Location("","","","","")
+    var coffee2="none"
+    var cancelRequest = false
 
 
 
@@ -74,32 +85,47 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+
+
+
+                var mFirebaseAuth = FirebaseAuth.getInstance()
+                var mFirebaseUser = mFirebaseAuth.currentUser
+                if (mFirebaseUser == null) {
+                    // Not signed in, launch the Sign In activity
+                    startActivity(Intent(this, SignInActivity::class.java))
+                    finish()
+                    return
+                } else {
+                    transaction.location = mFirebaseUser.displayName.toString()
+                    location.businessName = mFirebaseUser.displayName.toString()
+
+                }
+
+        fs = FirebaseFirestore.getInstance().document("Locations/${transaction.location}")
         db = FirebaseFirestore.getInstance().document("Locations/Home")//pull firstore data
         db.get().addOnSuccessListener(OnSuccessListener <DocumentSnapshot>{ documentSnapshot -> //set variables to firestore data
             amountInKeg = documentSnapshot.get(AMOUNT_IN_KEG)
-            location = documentSnapshot.get(LOCATION) as String
+            transaction.location = mFirebaseUser.displayName.toString()
             macAddress= documentSnapshot.get(MAC_ADDRESS) as String
             m_address = macAddress
             ConnectToDevice(this).execute()
         })
-       // Thread.sleep(1000)
-        //var posClient: PosClient = PosSdk.createClient(this, APPLICATION_ID)
+
+
+
+
+
         posClient = PosSdk.createClient(this, APPLICATION_ID)
 
         setup(amountDispensedTextView,costTextView,startCoffeeButton)
         unpaidTextView.visibility = View.INVISIBLE
         payForCoffeeButton.visibility = View.INVISIBLE
-        //stopValveButton()
 
-        payForCoffeeButton.setOnClickListener ({ sendCommand("4")
-
-
-             payForCoffeeButton.visibility= View.INVISIBLE
-            stopValveButton()
-
-
-
-        })
+        payForCoffeeButton.setOnClickListener {
+                sendCommand("4")
+                payForCoffeeButton.visibility= View.INVISIBLE
+                stopValveButton()
+        }
         //control_led_disconnect.setOnClickListener { ConnectToDevice(this).execute() }
 
     }
@@ -118,13 +144,17 @@ class MainActivity : AppCompatActivity() {
 
     fun setup(hello: TextView,cost:TextView, button: Button){
         var coffee = "none"
+        var coffee2="none"
         var storedCoffee = "0"
+        transaction.timeStamp = Timestamp.now()
+        var locations = fs.collection("Transactions")
+        locations.add(transaction).addOnSuccessListener{
+            transaction.transactionID = it.id}
         var costPerOunce : Double= 0.25
         var job: Job = launch(UI) {
-            delay(2000)
-            while (true) {
-               // if (m_isConnected == true){
 
+            delay(4000)
+            while (isActive) {
                 var coffee = "${coffeeMeter()}"
                 delay(100)
                 var coffee2 = "${coffeeMeter()}"
@@ -142,27 +172,31 @@ class MainActivity : AppCompatActivity() {
                     }
 
                 }
-
-            //}
             }
         }
-
-
         button.onClick {
             var command = sendCommand("3")
             coffee = "${coffeeMeter()}"
             startCoffeeButton.visibility = View.INVISIBLE
-
+            transaction.status = "Started"
 
         }
-
-        //placeholder
     }
 
-     fun stopValveButton() {
+    suspend fun coffeeMeter() : String= withContext(CommonPool) {
+        var buf = ByteArray(1024)
+        try {
+            var coffeeScanner: Scanner = Scanner(m_bluetoothSocket!!.inputStream).useDelimiter("&")
+            "${coffeeScanner.next()}"
+        } catch (e: IOException) {
+            "exepection"
+        }
+    }
 
+
+     fun stopValveButton() {
         var coffeeDispensed = transaction.coffeeDispensed
-        var coffeeCost = transaction.cost.toDouble()*100
+        var coffeeCost = transaction.cost.toDouble()//*100
         var coffeeCostInt = coffeeCost.toInt()
         var request: ChargeRequest = ChargeRequest.Builder(coffeeCostInt,CurrencyCode.USD).build()
         try{
@@ -171,30 +205,13 @@ class MainActivity : AppCompatActivity() {
 
         }catch (e: IOException) {
             }
-
-
-
     }
 
-    suspend fun coffeeMeter() : String= withContext(CommonPool) {
-        var buf = ByteArray(1024)
-        Log.d("coffee dispensed:", "coffee Dispensed")
-        try {
-            var coffeeScanner: Scanner = Scanner(m_bluetoothSocket!!.inputStream).useDelimiter("&")
-            Log.d("after delay:", "coffee Dispensed")
-            Log.d("after scanner next", "coffee Dispensed")
-
-            "${coffeeScanner.next()}"
-        } catch (e: IOException) {
-            "exepection"
-        }
-    }
 
 
 
     //onclickhandler for btton. This will be replaced by the data output by the arduino
     fun amountDispensedButtonClicked(view: View){
-
         var amountDispensed = editAmountDispensed.text.toString()
         var dblAmountDispensed = amountDispensed.toDouble()
         var stringAmountInKeg = amountInKeg.toString()
@@ -202,12 +219,14 @@ class MainActivity : AppCompatActivity() {
         amountInKeg = dblAmountInKeg.minus(dblAmountDispensed)
         println(amountInKeg as Double)
         items.put(AMOUNT_IN_KEG, amountInKeg as Double) //load data into hashmap so it can be sent back to firestore
-        items.put(LOCATION, location)
+        items.put(LOCATION, transaction.location)
         items.put(MAC_ADDRESS, macAddress)
         db.set(items)
-
-
     }
+
+
+
+
     private fun sendCommand(input: String) {
         if (m_bluetoothSocket != null) {
             try{
@@ -217,6 +236,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+
+
+
 
     private fun disconnect() {
         if (m_bluetoothSocket != null) {
@@ -230,6 +253,8 @@ class MainActivity : AppCompatActivity() {
         }
         finish()
     }
+
+
 
 
     private class ConnectToDevice(c: Context) : AsyncTask<Void, Void, String>() {
@@ -280,6 +305,8 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == CHARGE_REQUEST_CODE) {
             if (data == null) {
@@ -300,8 +327,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+
+
     private fun onTransactionSuccess(successResult: ChargeRequest.Success) {
         transaction.status = "Paid"
+        fs.collection("Transactions").document(transaction.transactionID).set(transaction)
         val message = Html.fromHtml("<b><font color='#00aa00'>Success</font></b><br><br>"
                 + "<b>Client RealTransaction Id</b><br>"
                 + successResult.clientTransactionId
@@ -313,11 +344,22 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, message.toString())
     }
 
-    private fun onTransactionError(errorResult: ChargeRequest.Error) {
+
+
+     fun onTransactionError(errorResult: ChargeRequest.Error) {
+
         startCoffeeButton.visibility = View.INVISIBLE
         payForCoffeeButton.visibility = View.VISIBLE
         transaction.status = "Unpaid"
         unpaidTextView.visibility = View.VISIBLE
+         var transactionInstance = fs.collection("Transactions").document(transaction.transactionID).set(transaction)
+         //setup(cancelRequest)
+         //this.recreate()
+         //startNewTransaction()
+
+
+
+
 
 //        val message = Html.fromHtml("<b><font color='#aa0000'>Error</font></b><br><br>"
 //                + "<b>Error Key</b><br>"
@@ -330,9 +372,12 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, message.toString())
     }
 
+
+
     private fun isBlank(s: String?): Boolean {
         return s == null || s.trim { it <= ' ' }.isEmpty()
     }
+
 
 
 
@@ -341,6 +386,18 @@ class MainActivity : AppCompatActivity() {
                 .setMessage(message)
                 .setPositiveButton(android.R.string.ok, null)
                 .show()
+    }
+
+    fun startNewTransaction(){
+        transaction = Transaction("","","","","", Timestamp.now())
+        unpaidTextView.visibility = View.INVISIBLE
+        payForCoffeeButton.visibility = View.INVISIBLE
+        startCoffeeButton.visibility= View.VISIBLE
+
+
+
+
+
     }
 
 
