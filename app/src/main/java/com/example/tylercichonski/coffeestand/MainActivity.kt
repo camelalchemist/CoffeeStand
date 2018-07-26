@@ -114,18 +114,18 @@ class MainActivity : AppCompatActivity() {
 
 
 
-
         posClient = PosSdk.createClient(this, APPLICATION_ID)
 
-        setup(amountDispensedTextView,costTextView,startCoffeeButton)
+        setup(amountDispensedTextView,costTextView,startCoffeeButton,payForCoffeeButton)
         unpaidTextView.visibility = View.INVISIBLE
         payForCoffeeButton.visibility = View.INVISIBLE
+        //hideSystemUI()
 
-        payForCoffeeButton.setOnClickListener {
-                sendCommand("4")
-                payForCoffeeButton.visibility= View.INVISIBLE
-                stopValveButton()
-        }
+//        payForCoffeeButton.setOnClickListener {
+//                sendCommand("4")
+//                payForCoffeeButton.visibility= View.INVISIBLE
+//                stopValveButton()
+//        }
         //control_led_disconnect.setOnClickListener { ConnectToDevice(this).execute() }
 
     }
@@ -142,14 +142,12 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    fun setup(hello: TextView,cost:TextView, button: Button){
+    fun setup(hello: TextView,cost:TextView, button: Button,offbutton: Button){
+
+
         var coffee = "none"
         var coffee2="none"
         var storedCoffee = "0"
-        transaction.timeStamp = Timestamp.now()
-        var locations = fs.collection("Transactions")
-        locations.add(transaction).addOnSuccessListener{
-            transaction.transactionID = it.id}
         var costPerOunce : Double= 0.25
         var job: Job = launch(UI) {
 
@@ -181,6 +179,17 @@ class MainActivity : AppCompatActivity() {
             transaction.status = "Started"
 
         }
+        offbutton.onClick {
+            job.cancel()
+            sendCommand("4")
+            payForCoffeeButton.visibility= View.INVISIBLE
+            stopValveButton()
+            transaction.timeStamp = Timestamp.now()
+            var locations = fs.collection("Transactions")
+            locations.add(transaction).addOnSuccessListener{
+                transaction.transactionID = it.id}
+
+        }
     }
 
     suspend fun coffeeMeter() : String= withContext(CommonPool) {
@@ -207,22 +216,6 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-
-
-
-    //onclickhandler for btton. This will be replaced by the data output by the arduino
-    fun amountDispensedButtonClicked(view: View){
-        var amountDispensed = editAmountDispensed.text.toString()
-        var dblAmountDispensed = amountDispensed.toDouble()
-        var stringAmountInKeg = amountInKeg.toString()
-        var dblAmountInKeg = stringAmountInKeg.toDouble()
-        amountInKeg = dblAmountInKeg.minus(dblAmountDispensed)
-        println(amountInKeg as Double)
-        items.put(AMOUNT_IN_KEG, amountInKeg as Double) //load data into hashmap so it can be sent back to firestore
-        items.put(LOCATION, transaction.location)
-        items.put(MAC_ADDRESS, macAddress)
-        db.set(items)
-    }
 
 
 
@@ -308,6 +301,8 @@ class MainActivity : AppCompatActivity() {
 
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        costTextView.text = transaction.cost
+        amountDispensedTextView.text = transaction.coffeeDispensed
         if (requestCode == CHARGE_REQUEST_CODE) {
             if (data == null) {
                 // This can happen if Square Point of Sale was uninstalled or crashed while we're waiting for a
@@ -332,7 +327,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun onTransactionSuccess(successResult: ChargeRequest.Success) {
         transaction.status = "Paid"
-        fs.collection("Transactions").document(transaction.transactionID).set(transaction)
+        fs.collection("Transactions").document("${transaction.transactionID}").set(transaction)
         val message = Html.fromHtml("<b><font color='#00aa00'>Success</font></b><br><br>"
                 + "<b>Client RealTransaction Id</b><br>"
                 + successResult.clientTransactionId
@@ -352,9 +347,9 @@ class MainActivity : AppCompatActivity() {
         payForCoffeeButton.visibility = View.VISIBLE
         transaction.status = "Unpaid"
         unpaidTextView.visibility = View.VISIBLE
-         var transactionInstance = fs.collection("Transactions").document(transaction.transactionID).set(transaction)
+         fs.collection("Transactions").document("${transaction.transactionID}").set(transaction)
          //setup(cancelRequest)
-         //this.recreate()
+         this.recreate()
          //startNewTransaction()
 
 
@@ -400,6 +395,21 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun hideSystemUI() {
+        // Enables regular immersive mode.
+        // For "lean back" mode, remove SYSTEM_UI_FLAG_IMMERSIVE.
+        // Or for "sticky immersive," replace it with SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        val decorView = window.decorView
+        decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE
+                // Set the content to appear under the system bars so that the
+                // content doesn't resize when the system bars hide and show.
+                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                // Hide the nav bar and status bar
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_FULLSCREEN)
+    }
 
 }
 
