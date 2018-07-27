@@ -11,7 +11,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
-        android:background="ni"
+        android:background="@drawable/payment_button"
         android:text="Tap to Pay for Coffee"
         app:layout_constraintTop_toBottomOf="@+id/imageView11"
         tools:layout_editor_absoluteX="548dp" />
@@ -180,10 +180,10 @@
 
     <Button
         android:id="@+id/startCoffeeButton"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
         android:layout_marginBottom="8dp"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="100dp"
         android:layout_marginTop="8dp"
         android:background="@drawable/nitro_coffee_press_button"
         android:elevation="24dp"
@@ -193,14 +193,14 @@
         app:layout_constraintTop_toBottomOf="@+id/imageView11" />
 
     <ImageView
-        android:id="@+id/imageView19"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:id="@+id/startCoffeeButtonBackground"
+        android:layout_width="400dp"
+        android:layout_height="230dp"
         app:layout_constraintBottom_toBottomOf="@+id/startCoffeeButton"
         app:layout_constraintEnd_toEndOf="@+id/startCoffeeButton"
         app:layout_constraintStart_toStartOf="@+id/startCoffeeButton"
         app:layout_constraintTop_toTopOf="@+id/startCoffeeButton"
-        app:srcCompat="@drawable/ic_nitro_coffee_press_button_background" />
+        app:srcCompat="@drawable/nitro_coffee_press_button_background" />
 
 
 </android.support.constraint.ConstraintLayout>

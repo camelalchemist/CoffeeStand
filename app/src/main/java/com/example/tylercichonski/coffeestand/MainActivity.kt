@@ -119,6 +119,7 @@ class MainActivity : AppCompatActivity() {
         setup(amountDispensedTextView,costTextView,startCoffeeButton,payForCoffeeButton)
         unpaidTextView.visibility = View.INVISIBLE
         payForCoffeeButton.visibility = View.INVISIBLE
+        startCoffeeButtonBackground.visibility=View.INVISIBLE
         //hideSystemUI()
 
 //        payForCoffeeButton.setOnClickListener {
@@ -175,7 +176,7 @@ class MainActivity : AppCompatActivity() {
         button.onClick {
             var command = sendCommand("3")
             coffee = "${coffeeMeter()}"
-            startCoffeeButton.visibility = View.INVISIBLE
+            startCoffeeButtonBackground.visibility = View.VISIBLE
             transaction.status = "Started"
 
         }
@@ -343,7 +344,7 @@ class MainActivity : AppCompatActivity() {
 
      fun onTransactionError(errorResult: ChargeRequest.Error) {
 
-        startCoffeeButton.visibility = View.INVISIBLE
+        startCoffeeButtonBackground.visibility = View.VISIBLE
         payForCoffeeButton.visibility = View.VISIBLE
         transaction.status = "Unpaid"
         unpaidTextView.visibility = View.VISIBLE
