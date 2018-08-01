@@ -37,7 +37,9 @@ import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.channels.Channel
 import kotlinx.coroutines.experimental.channels.actor
 import java.io.*
+import java.text.DecimalFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 
 class MainActivity : AppCompatActivity() {
@@ -101,15 +103,20 @@ class MainActivity : AppCompatActivity() {
 
                 }
 
+
         fs = FirebaseFirestore.getInstance().document("Locations/${transaction.location}")
-        db = FirebaseFirestore.getInstance().document("Locations/Home")//pull firstore data
-        db.get().addOnSuccessListener(OnSuccessListener <DocumentSnapshot>{ documentSnapshot -> //set variables to firestore data
-            amountInKeg = documentSnapshot.get(AMOUNT_IN_KEG)
-            transaction.location = mFirebaseUser.displayName.toString()
-            macAddress= documentSnapshot.get(MAC_ADDRESS) as String
-            m_address = macAddress
-            ConnectToDevice(this).execute()
-        })
+        //db = FirebaseFirestore.getInstance().document("Locations/Home")//pull firstore data
+//        fs.get().addOnSuccessListener(OnSuccessListener <DocumentSnapshot>{ documentSnapshot -> //set variables to firestore data
+//            amountInKeg = documentSnapshot.get(AMOUNT_IN_KEG)
+//            transaction.location = mFirebaseUser.displayName.toString()
+//            //macAddress= documentSnapshot.get(MAC_ADDRESS) as String
+//            //m_address = "98:D3:71:FD:43:68"//macAddress
+//            Log.d("BT","prebluetoth launch")
+//
+//        })
+        m_address = "98:D3:71:FD:43:68"
+        Log.d("BT","prebluetoth launch")
+        ConnectToDevice(this).execute()
 
 
 
@@ -150,16 +157,19 @@ class MainActivity : AppCompatActivity() {
         var coffee2="none"
         var storedCoffee = "0"
         var costPerOunce : Double= 0.25
-        var job: Job = launch(UI) {
+        val df = DecimalFormat("#.##")
 
-            delay(4000)
+        //Thread.sleep(1000)
+        var job: Job = launch(UI) {
+            delay(1000)
             while (isActive) {
                 var coffee = "${coffeeMeter()}"
                 delay(100)
                 var coffee2 = "${coffeeMeter()}"
                 if (coffee2 > coffee) {
-                    amountDispensedTextView.text = coffee2
-                    var costDouble = coffee2.toDouble() * costPerOunce
+                    var coffeeDouble = coffee2.toDouble()*.0338
+                    amountDispensedTextView.text = df.format(coffeeDouble).toString()
+                    var costDouble = df.format(coffeeDouble * costPerOunce)
                     costTextView.text = costDouble.toString()
                     transaction.coffeeDispensed = coffee2
                     transaction.cost = costDouble.toString()
@@ -175,7 +185,9 @@ class MainActivity : AppCompatActivity() {
         }
         button.onClick {
             var command = sendCommand("3")
+            Log.d(TAG,"Coffee button Pressed")
             coffee = "${coffeeMeter()}"
+            Log.d(TAG,"Coffee function started")
             startCoffeeButtonBackground.visibility = View.VISIBLE
             transaction.status = "Started"
 
@@ -208,7 +220,11 @@ class MainActivity : AppCompatActivity() {
         var coffeeDispensed = transaction.coffeeDispensed
         var coffeeCost = transaction.cost.toDouble()//*100
         var coffeeCostInt = coffeeCost.toInt()
-        var request: ChargeRequest = ChargeRequest.Builder(coffeeCostInt,CurrencyCode.USD).build()
+        var request: ChargeRequest = ChargeRequest.
+                Builder(coffeeCostInt,CurrencyCode.USD)
+                .restrictTendersTo(ChargeRequest.TenderType.CARD)
+                .autoReturn(4,TimeUnit.SECONDS)
+                .build()
         try{
             val intent: Intent = posClient?.createChargeIntent(request)!!
             startActivityForResult(intent,CHARGE_REQUEST_CODE)
@@ -265,13 +281,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun doInBackground(vararg p0: Void?): String? {
-            try {
+            try {Log.d("BT","tried")
                 if (m_bluetoothSocket == null || !m_isConnected) {
+                    Log.d("BT","m is not connected")
                     m_bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+                    Log.d("BT","m_adapter susccess")
                     val device: BluetoothDevice = m_bluetoothAdapter.getRemoteDevice(m_address)
                     m_bluetoothSocket = device.createInsecureRfcommSocketToServiceRecord(m_myUUID)
+                    Log.d("BT","RF commSocket Success")
                     BluetoothAdapter.getDefaultAdapter().cancelDiscovery()
+                    Log.d("BT","calcel discovery success")
                     m_bluetoothSocket!!.connect()
+                    Log.d("BT","connection success")
 
 
                 }
@@ -329,14 +350,15 @@ class MainActivity : AppCompatActivity() {
     private fun onTransactionSuccess(successResult: ChargeRequest.Success) {
         transaction.status = "Paid"
         fs.collection("Transactions").document("${transaction.transactionID}").set(transaction)
-        val message = Html.fromHtml("<b><font color='#00aa00'>Success</font></b><br><br>"
-                + "<b>Client RealTransaction Id</b><br>"
-                + successResult.clientTransactionId
-                + "<br><br><b>Server RealTransaction Id</b><br>"
-                + successResult.serverTransactionId
-                + "<br><br><b>Request Metadata</b><br>"
-                + successResult.requestMetadata)
-        showResult(message)
+        this.recreate()
+//        val message = Html.fromHtml("<b><font color='#00aa00'>Success</font></b><br><br>"
+//                + "<b>Client RealTransaction Id</b><br>"
+//                + successResult.clientTransactionId
+//                + "<br><br><b>Server RealTransaction Id</b><br>"
+//                + successResult.serverTransactionId
+//                + "<br><br><b>Request Metadata</b><br>"
+//                + successResult.requestMetadata)
+//        showResult(message)
         Log.d(TAG, message.toString())
     }
 

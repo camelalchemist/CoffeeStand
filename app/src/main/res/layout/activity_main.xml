@@ -9,12 +9,26 @@
     <Button
         android:id="@+id/payForCoffeeButton"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_marginBottom="75dp"
+        android:layout_marginEnd="75dp"
+        android:layout_marginStart="70dp"
         android:layout_marginTop="100dp"
         android:background="@drawable/payment_button"
         android:text="Tap to Pay for Coffee"
-        app:layout_constraintTop_toBottomOf="@+id/imageView11"
-        tools:layout_editor_absoluteX="548dp" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
+        app:layout_constraintTop_toBottomOf="@+id/imageView11" />
+
+    <TextView
+        android:id="@+id/payForCoffeeButtonText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#ffffff"
+        android:textSize="18.3sp"
+        tools:text="Press
+       to Pay" />
 
     <TextView
         android:id="@+id/unpaidTextView"
@@ -44,10 +58,7 @@
         android:id="@+id/imageView11"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginBottom="300dp"
-        android:layout_marginLeft="50dp"
-        android:layout_marginRight="50dp"
-        android:layout_marginTop="50dp"
+        android:layout_marginBottom="350dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -183,12 +194,14 @@
         android:layout_width="200dp"
         android:layout_height="200dp"
         android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
         android:layout_marginStart="100dp"
         android:layout_marginTop="8dp"
         android:background="@drawable/nitro_coffee_press_button"
         android:elevation="24dp"
         android:onClick="onButtonClicked"
         app:layout_constraintBottom_toBottomOf="@+id/background"
+        app:layout_constraintEnd_toStartOf="@+id/guideline"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/imageView11" />
 
@@ -201,6 +214,13 @@
         app:layout_constraintStart_toStartOf="@+id/startCoffeeButton"
         app:layout_constraintTop_toTopOf="@+id/startCoffeeButton"
         app:srcCompat="@drawable/nitro_coffee_press_button_background" />
+
+    <android.support.constraint.Guideline
+        android:id="@+id/guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.5" />
 
 
 </android.support.constraint.ConstraintLayout>
